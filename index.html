@@ -111,6 +111,23 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 .gift{display:flex;flex-direction:column;gap:14px}
 .gift-photo{aspect-ratio:1/1;transform:rotate(1deg)}
 .gift-cap{font-size:17px;font-weight:600;margin:0;text-align:center}
+/* Bó hoa tô màu */
+.gift-stage{position:relative;aspect-ratio:1/1;width:100%;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 14px 30px -14px rgba(43,15,46,.35);transform:rotate(1deg)}
+.gift-stage.tap{cursor:pointer}
+.bouquet,.real{position:absolute;inset:0;transition:opacity .8s ease}
+.bouquet{background:#fff;isolation:isolate}
+.paint{position:absolute;inset:0;filter:blur(5px)}
+.blob{position:absolute;border-radius:50%;transform:translate(-50%,-50%) scale(0);opacity:.92}
+.bouquet.coloring .blob{animation:paint 1.2s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:var(--d)}
+@keyframes paint{to{transform:translate(-50%,-50%) scale(1)}}
+.bouquet img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply}
+.real{opacity:0;pointer-events:none}
+.real img{width:100%;height:100%;object-fit:cover}
+.real .ph{font:500 14px/1.5 var(--mono);color:#a3546f;text-align:center;padding:16px;border:2px dashed #f2a3bc;border-radius:12px;margin:18px}
+.gift-stage.show-real .real{opacity:1}
+.gift-stage.show-real .bouquet{opacity:0}
+.gift-hint{font:600 13px/1.3 var(--mono);color:#a3546f;text-align:center;margin:0;min-height:1.3em;transition:opacity .5s}
+.gift-hint:empty{opacity:0}
 
 /* ---------- Intro: secret letter ---------- */
 #intro{background:radial-gradient(ellipse at 50% 30%,#3a1430 0%,#1a0716 75%);color:#fbe9ef;font-family:var(--body)}
@@ -153,7 +170,7 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 @keyframes pulse{50%{transform:scale(1.07);box-shadow:0 0 0 8px rgba(255,63,120,.25)}}
 .mute:focus-visible{outline:2px solid #ffd6e2;outline-offset:3px}
 
-@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.shake-hard,.giftbox,.screen.enter,.screen.leave,.step.leave,.mute.locked{animation:none}.cbtn.cancel{transition:none}}
+@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.shake-hard,.giftbox,.screen.enter,.screen.leave,.step.leave,.mute.locked{animation:none}.bouquet.coloring .blob{animation:none;transform:translate(-50%,-50%)}.cbtn.cancel{transition:none}}
 </style>
 </head>
 <body>
@@ -249,7 +266,14 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
         <span class="lid"></span><span class="box"></span><span class="ribbon"></span>
       </button>
       <div class="gift" id="gift" hidden>
-        <div class="photo gift-photo" id="giftPhoto"></div>
+        <div class="gift-stage" id="giftStage">
+          <div class="bouquet" id="bouquet">
+            <div class="paint" id="paint"></div>
+            <img id="drawing" alt="Bó hoa">
+          </div>
+          <div class="real" id="giftPhoto"></div>
+        </div>
+        <p class="gift-hint" id="giftHint"></p>
         <p class="gift-cap" id="giftCap"></p>
       </div>
       <button class="replay" id="replay" type="button">↺ Xem lại từ đầu</button>
@@ -316,8 +340,11 @@ const CONFIG = {
   // ✏️ [7] Tên người gửi — ký ở cuối lời chúc dạng "— Quang". Để "" thì không ký
   from: "",
 
-  // ✏️ [8] ẢNH MÓN QUÀ (màn số 4, hiện sau khi mở hộp) — ảnh vuông (1:1) là đẹp nhất
-  giftPhoto: "",
+  // ✏️ [8] PHẦN QUÀ (màn số 4, hiện sau khi mở hộp)
+  //   giftDrawing: tranh nét vẽ (chưa tô màu) — sẽ được tô màu dần bằng hiệu ứng
+  //   giftPhoto:   ảnh thật, hiện ra khi chạm vào tranh đã tô xong
+  giftDrawing: "anh/no_color_flower.jpg",
+  giftPhoto: "anh/flower.jpg",
 
   // ✏️ [9] Dòng chữ dưới ảnh quà. Để "" thì hiện mặc định "Chúc mừng sinh nhật! 🎉"
   //        vd: "Quà sẽ được giao tận tay vào 20/11 nha!"
@@ -576,9 +603,58 @@ async function goStep(n,instant){
 }
 document.querySelectorAll(".next").forEach(b=>b.onclick=()=>goStep(+b.dataset.go));
 
+/* ---- Tô màu bó hoa ----
+   ✏️ [TÙY CHỌN] Bảng màu: [đậm (giữa bông), chính, nhạt (viền)] */
+const PAL = {
+  pink:   ["#e2588c","#f6a3c2","#ffdbe8"],
+  purple: ["#8457c4","#c2a1ec","#ebdffb"],
+  white:  ["#f1c3d4","#fbe9f0","#fff8fb"],
+  leaf:   ["#86b493","#b9d9bd","#e6f2e4"],
+  stem:   ["#a6c9a4","#d3e7cf","#f0f7ee"]
+};
+// Vị trí từng mảng màu trên tranh: [x%, y%, cỡ%, màu, giây bắt đầu]
+const PAINT = [
+  [30,41,25,"purple",.3],  [31,21,23,"pink",.85],  [49,30,23,"white",1.4],
+  [59,17,21,"purple",1.95],[73,33,22,"pink",2.5],  [61,48,25,"pink",3.05],
+  [45,57,15,"white",3.55],
+  [18,42,11,"leaf",4],  [13,51,8,"leaf",4.1],  [22,62,12,"leaf",4.2], [30,66,11,"leaf",4.25],
+  [37,68,9,"leaf",4.3], [84,55,15,"leaf",4.4], [72,65,13,"leaf",4.5], [82,40,9,"leaf",4.55],
+  [86,24,8,"leaf",4.6], [52,82,22,"stem",4.9], [52,73,7,"purple",5.1]
+];
+const BELL = [76,79,81,84,86,88,91];   // nốt "ting" cho từng bông
+let paintTimers = [];
+function buildPaint(){
+  const p = $("paint"); p.innerHTML = "";
+  PAINT.forEach(([x,y,s,c,d]) => {
+    const [deep,main,light] = PAL[c], b = document.createElement("i");
+    b.className = "blob";
+    b.style.cssText = `left:${x}%;top:${y}%;width:${s}%;height:${s}%;--d:${d}s;` +
+      `background:radial-gradient(circle at 50% 45%,${deep} 0%,${main} 34%,${light} 60%,transparent 71%)`;
+    p.appendChild(b);
+  });
+}
+function colorBouquet(){
+  const bq = $("bouquet"); bq.classList.remove("coloring"); void bq.offsetWidth; bq.classList.add("coloring");
+  PAINT.slice(0,7).forEach(([,,,,d],i) => paintTimers.push(setTimeout(() => {
+    tone(mtof(BELL[i]), .9, {type:"sine", vol:.12}); tone(mtof(BELL[i]+12), .5, {type:"sine", vol:.04});
+  }, (reduce ? 0 : d*1000 + 300))));
+  const total = reduce ? 100 : (PAINT[PAINT.length-1][4] + 1.3) * 1000;
+  paintTimers.push(setTimeout(() => {
+    if(CONFIG.giftPhoto){ $("giftStage").classList.add("tap"); $("giftHint").textContent = "Chạm vào tranh để xem bó hoa thật 💐"; }
+    confetti();
+  }, total));
+}
+$("giftStage").onclick = () => {
+  const s = $("giftStage"); if(!s.classList.contains("tap")) return;
+  s.classList.toggle("show-real");
+  $("giftHint").textContent = s.classList.contains("show-real") ? "Chạm để xem lại tranh 🎨" : "Chạm vào tranh để xem bó hoa thật 💐";
+};
+
 function resetGift(){
+  paintTimers.forEach(clearTimeout); paintTimers = [];
   $("giftbox").classList.remove("opened"); $("giftbox").hidden=false; $("giftbox").disabled=false;
   $("gift").hidden=true; $("giftTitle").textContent="Chạm vào hộp quà để mở";
+  $("bouquet").classList.remove("coloring"); $("giftStage").classList.remove("tap","show-real"); $("giftHint").textContent="";
 }
 $("giftbox").onclick=async()=>{
   const g=$("giftbox"); if(g.classList.contains("opened")) return;
@@ -586,7 +662,7 @@ $("giftbox").onclick=async()=>{
   await wait(650);
   g.hidden=true; $("gift").hidden=false;
   $("giftTitle").textContent="Quà của "+CONFIG.nickname+" đây!";
-  confetti();
+  colorBouquet();
 };
 
 function fillCard(){
@@ -604,8 +680,10 @@ function fillCard(){
   $("sig").textContent=CONFIG.from ? "— "+CONFIG.from : "";
   $("nick2").textContent=CONFIG.nickname;
   const gp=$("giftPhoto");
-  if(CONFIG.giftPhoto){ gp.innerHTML=""; const img=new Image(); img.src=CONFIG.giftPhoto; img.alt="Quà sinh nhật"; gp.appendChild(img); }
-  else gp.innerHTML='<div class="ph">[ Ảnh món quà ]</div>';
+  if(CONFIG.giftPhoto){ gp.innerHTML=""; const img=new Image(); img.src=CONFIG.giftPhoto; img.alt="Bó hoa thật"; gp.appendChild(img); }
+  else gp.innerHTML="";
+  $("drawing").src=CONFIG.giftDrawing;
+  buildPaint();
   $("giftCap").textContent=CONFIG.giftCaption || "Chúc mừng sinh nhật! 🎉";
 }
 
