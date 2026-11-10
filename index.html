@@ -128,6 +128,23 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 .gift-stage.show-real .bouquet{opacity:0}
 .gift-hint{font:600 13px/1.3 var(--mono);color:#a3546f;text-align:center;margin:0;min-height:1.3em;transition:opacity .5s}
 .gift-hint:empty{opacity:0}
+/* Quà bí mật: che mờ + con mắt, chạm để mở */
+.more{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+.more.enter{animation:pop .8s cubic-bezier(.2,.9,.3,1.2) both}
+.more-t{font-family:var(--display);font-weight:800;font-size:clamp(20px,5.5vw,24px);margin:0;text-align:center}
+.secrets{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.secret{display:flex;flex-direction:column;gap:8px}
+.sbox{position:relative;aspect-ratio:1/1;border-radius:16px;overflow:hidden;border:0;padding:0;cursor:pointer;background:linear-gradient(135deg,#ffd6e2,#e3d4fb);box-shadow:0 12px 26px -14px rgba(43,15,46,.4)}
+.sbox .media{position:absolute;inset:0;filter:blur(18px) saturate(1.3);transform:scale(1.25);transition:filter 1s ease,transform 1s ease}
+.sbox .media img{width:100%;height:100%;object-fit:cover;display:block}
+.sbox .media .ph{position:absolute;inset:12px;display:flex;align-items:center;justify-content:center;text-align:center;font:500 12px/1.4 var(--mono);color:#a3546f;border:2px dashed #f2a3bc;border-radius:10px}
+.sbox .veil{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(255,242,245,.28);color:var(--card-ink);font:600 12px/1 var(--mono);letter-spacing:.04em;transition:opacity .6s ease}
+.eye{width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.9);color:var(--card-accent);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px -6px rgba(43,15,46,.45);animation:pulse 1.6s ease-in-out infinite}
+.sbox.open{cursor:zoom-in}
+.sbox.open .media{filter:none;transform:none}
+.sbox.open .veil{opacity:0;pointer-events:none}
+.sbox:focus-visible{outline:2px solid var(--card-accent);outline-offset:3px}
+.scap{font-size:14px;font-weight:600;margin:0;text-align:center;min-height:1.3em}
 
 /* ---------- Intro: secret letter ---------- */
 #intro{background:radial-gradient(ellipse at 50% 30%,#3a1430 0%,#1a0716 75%);color:#fbe9ef;font-family:var(--body)}
@@ -170,7 +187,7 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 @keyframes pulse{50%{transform:scale(1.07);box-shadow:0 0 0 8px rgba(255,63,120,.25)}}
 .mute:focus-visible{outline:2px solid #ffd6e2;outline-offset:3px}
 
-@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.shake-hard,.giftbox,.screen.enter,.screen.leave,.step.leave,.mute.locked{animation:none}.bouquet.coloring .blob{animation:none;transform:translate(-50%,-50%)}.cbtn.cancel{transition:none}}
+@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.shake-hard,.giftbox,.screen.enter,.screen.leave,.step.leave,.mute.locked,.eye,.more.enter{animation:none}.bouquet.coloring .blob{animation:none;transform:translate(-50%,-50%)}.cbtn.cancel{transition:none}}
 </style>
 </head>
 <body>
@@ -275,6 +292,11 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
         </div>
         <p class="gift-hint" id="giftHint"></p>
         <p class="gift-cap" id="giftCap"></p>
+        <div class="more" id="more" hidden>
+          <!-- ✏️ [TÙY CHỌN] Dòng giới thiệu 2 món quà bí mật -->
+          <p class="more-t">Chưa hết đâu… còn quà bí mật nữa 👀</p>
+          <div class="secrets" id="secrets"></div>
+        </div>
       </div>
       <button class="replay" id="replay" type="button">↺ Xem lại từ đầu</button>
     </article>
@@ -345,6 +367,14 @@ const CONFIG = {
   //   giftPhoto:   ảnh thật, hiện ra khi chạm vào tranh đã tô xong
   giftDrawing: "anh/no_color_flower.jpg",
   giftPhoto: "anh/flower.jpg",
+
+  // ✏️ [8b] QUÀ BÍ MẬT — hiện sau bó hoa, bị che mờ, chạm vào con mắt mới hiện ảnh
+  //   photo:   đường dẫn ảnh (vd "anh/qua-1.jpg"). Để "" thì hiện khung chờ
+  //   caption: dòng chữ hiện dưới ảnh SAU KHI mở. Muốn thêm món thì thêm 1 dòng { ... },
+  secretGifts: [
+    { photo: "", caption: "" },
+    { photo: "", caption: "" }
+  ],
 
   // ✏️ [9] Dòng chữ dưới ảnh quà. Để "" thì hiện mặc định "Chúc mừng sinh nhật! 🎉"
   //        vd: "Quà sẽ được giao tận tay vào 20/11 nha!"
@@ -643,6 +673,34 @@ function colorBouquet(){
     if(CONFIG.giftPhoto){ $("giftStage").classList.add("tap"); $("giftHint").textContent = "Chạm vào tranh để xem bó hoa thật 💐"; }
     confetti();
   }, total));
+  // Hiện phần quà bí mật sau khi tô xong
+  if(CONFIG.secretGifts.length) paintTimers.push(setTimeout(() => {
+    const m = $("more"); m.hidden = false; m.classList.remove("enter"); void m.offsetWidth; m.classList.add("enter");
+  }, total + 1500));
+}
+
+const EYE = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+function buildSecrets(){
+  const wrap = $("secrets"); wrap.innerHTML = "";
+  CONFIG.secretGifts.forEach((g, i) => {
+    const box = document.createElement("div"); box.className = "secret";
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "sbox";
+    btn.setAttribute("aria-label", "Mở quà bí mật " + (i + 1));
+    const media = document.createElement("div"); media.className = "media";
+    if(g.photo){ const img = new Image(); img.src = g.photo; img.alt = g.caption || ("Quà bí mật " + (i + 1)); media.appendChild(img); }
+    else media.innerHTML = '<div class="ph">[ Ảnh quà ' + (i + 1) + ' ]</div>';
+    const veil = document.createElement("div"); veil.className = "veil";
+    veil.innerHTML = '<span class="eye">' + EYE + '</span><span>🔒 Chạm để mở</span>';
+    const cap = document.createElement("p"); cap.className = "scap"; cap.textContent = "Quà bí mật #" + (i + 1);
+    btn.append(media, veil);
+    btn.onclick = () => {
+      if(btn.classList.contains("open")){ if(g.photo) window.open(g.photo, "_blank"); return; }
+      btn.classList.add("open"); btn.setAttribute("aria-label", "Quà " + (i + 1) + " — chạm để xem ảnh lớn");
+      cap.textContent = g.caption || ("Quà bí mật #" + (i + 1));
+      [0, .09, .18, .27].forEach((at, k) => tone(mtof([84, 88, 91, 96][k]), .5, {type:"sine", vol:.1, at}));   // tiếng lấp lánh
+    };
+    box.append(btn, cap); wrap.appendChild(box);
+  });
 }
 $("giftStage").onclick = () => {
   const s = $("giftStage"); if(!s.classList.contains("tap")) return;
@@ -655,6 +713,7 @@ function resetGift(){
   $("giftbox").classList.remove("opened"); $("giftbox").hidden=false; $("giftbox").disabled=false;
   $("gift").hidden=true; $("giftTitle").textContent="Chạm vào hộp quà để mở";
   $("bouquet").classList.remove("coloring"); $("giftStage").classList.remove("tap","show-real"); $("giftHint").textContent="";
+  $("more").hidden=true; buildSecrets();   // khóa lại quà bí mật
 }
 $("giftbox").onclick=async()=>{
   const g=$("giftbox"); if(g.classList.contains("opened")) return;
@@ -684,6 +743,7 @@ function fillCard(){
   else gp.innerHTML="";
   $("drawing").src=CONFIG.giftDrawing;
   buildPaint();
+  buildSecrets();
   $("giftCap").textContent=CONFIG.giftCaption || "Chúc mừng sinh nhật! 🎉";
 }
 
