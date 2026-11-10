@@ -146,11 +146,16 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 .shake{animation:shake .4s}
 @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 .taunt{font-size:13px;opacity:.7;min-height:1.3em;margin:0}
+.shake-hard{animation:shakeHard .55s}
+@keyframes shakeHard{10%,50%,90%{transform:translate(-12px,2px) rotate(-1.2deg)}30%,70%{transform:translate(12px,-2px) rotate(1.2deg)}}
+.mute{position:fixed;top:max(12px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));z-index:30;width:42px;height:42px;border-radius:50%;border:0;background:rgba(0,0,0,.35);color:#fff;font-size:18px;cursor:pointer;backdrop-filter:blur(6px)}
+.mute:focus-visible{outline:2px solid #ffd6e2;outline-offset:3px}
 
-@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.giftbox,.screen.enter,.screen.leave,.step.leave{animation:none}.cbtn.cancel{transition:none}}
+@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.shake-hard,.giftbox,.screen.enter,.screen.leave,.step.leave{animation:none}.cbtn.cancel{transition:none}}
 </style>
 </head>
 <body>
+<button class="mute" id="mute" type="button" aria-label="Tắt âm thanh">🔊</button>
 
 <section id="intro" class="screen">
   <div class="letter">
@@ -314,13 +319,107 @@ const CONFIG = {
 
   // ✏️ [9] Dòng chữ dưới ảnh quà. Để "" thì hiện mặc định "Chúc mừng sinh nhật! 🎉"
   //        vd: "Quà sẽ được giao tận tay vào 20/11 nha!"
-  giftCaption: ""   // ← dòng cuối: KHÔNG có dấu phẩy
+  giftCaption: "",
+
+  // ✏️ [10] NHẠC NỀN — đặt file .mp3 vào thư mục "nhac" rồi ghi tên file vào đây
+  //   chase:      nhạc lúc đuổi bắt nút "Mở". Để "" → dùng nhạc rượt đuổi tự tạo sẵn trong code
+  //   background: nhạc chung cho phần thiệp (sau màn hack), lặp lại liên tục. Để "" → không có nhạc
+  //   vd: background: "nhac/1-doi.mp3"
+  music: {
+    chase: "",
+    background: ""
+  }   // ← dòng cuối: KHÔNG có dấu phẩy
 };
 /* ═══════════════════ HẾT PHẦN CẦN ĐIỀN BẮT BUỘC ═══════════════════ */
 
 const $ = id => document.getElementById(id);
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wait = ms => new Promise(r => setTimeout(r, reduce ? Math.min(ms, 60) : ms));
+
+/* ================= ÂM THANH ================= */
+const AUDIO = { ctx:null, master:null, muted:false, chaseOn:false, chaseTimer:null, chase:null, bg:null };
+function ac(){
+  if(!AUDIO.ctx){
+    const C = window.AudioContext || window.webkitAudioContext; if(!C) return null;
+    AUDIO.ctx = new C(); AUDIO.master = AUDIO.ctx.createGain();
+    AUDIO.master.gain.value = AUDIO.muted ? 0 : 1; AUDIO.master.connect(AUDIO.ctx.destination);
+  }
+  if(AUDIO.ctx.state === "suspended") AUDIO.ctx.resume();
+  return AUDIO.ctx;
+}
+function tone(freq, dur, {type="sine", vol=.2, at=0, slide=0} = {}){
+  const c = ac(); if(!c) return;
+  const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if(slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .005);
+  g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(AUDIO.master); o.start(t); o.stop(t + dur + .02);
+}
+// Tiếng tít tít khi dò IP
+const beep  = () => tone(1760, .06, {type:"square", vol:.06});
+const tick  = () => tone(1150, .03, {type:"square", vol:.04});
+const found = () => { tone(880, .12, {type:"square", vol:.07}); tone(1320, .3, {type:"square", vol:.07, at:.13}); };
+// Tiếng "è è" rung rung khi sai mật mã + rung điện thoại
+function buzz(){
+  const c = ac();
+  if(c){
+    const t = c.currentTime, out = c.createGain(), trem = c.createGain(), lfo = c.createOscillator(), depth = c.createGain();
+    out.gain.setValueAtTime(.0001, t); out.gain.linearRampToValueAtTime(.22, t + .02);
+    out.gain.setValueAtTime(.22, t + .45); out.gain.exponentialRampToValueAtTime(.0001, t + .58);
+    trem.gain.value = .5; lfo.frequency.value = 28; depth.gain.value = .5;
+    lfo.connect(depth); depth.connect(trem.gain);
+    [110, 113.5].forEach(f => { const o = c.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.connect(trem); o.start(t); o.stop(t + .62); });
+    trem.connect(out); out.connect(AUDIO.master); lfo.start(t); lfo.stop(t + .62);
+  }
+  try { navigator.vibrate && navigator.vibrate([90,50,90,50,160]); } catch(e){}
+}
+// Nhạc rượt đuổi tự tạo (dùng khi music.chase để trống)
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+const CHASE_MEL  = [72,74,75,76,79,76,74,72, 71,72,74,71,67,0,67,0, 72,75,78,79,78,75,72,69, 70,71,72,74,76,74,72,0];
+const CHASE_BASS = [48,0,55,0,48,0,55,0, 43,0,50,0,43,0,50,0, 48,0,55,0,45,0,52,0, 41,0,48,0,43,0,47,0];
+function mkAudio(src){ const a = new Audio(src); a.loop = true; a.preload = "auto"; return a; }
+function fade(a, to, ms, then){
+  const from = a.volume, st = performance.now();
+  (function f(now){ const k = Math.min(1, (now - st) / ms); a.volume = from + (to - from) * k;
+    if(k < 1) requestAnimationFrame(f); else if(then) then(); })(st);
+}
+function playLoop(a, vol){ a.muted = AUDIO.muted; a.volume = 0; a.play().catch(()=>{}); fade(a, vol, 1000); }
+function stopLoop(a){ if(a && !a.paused) fade(a, 0, 500, () => { a.pause(); a.currentTime = 0; }); }
+function startChase(){
+  if(AUDIO.chaseOn) return; AUDIO.chaseOn = true;
+  if(CONFIG.music.chase){ AUDIO.chase = AUDIO.chase || mkAudio(CONFIG.music.chase); playLoop(AUDIO.chase, .6); return; }
+  const c = ac(); if(!c) return;
+  const sd = 60 / 168 / 2; let i = 0, next = c.currentTime + .05;
+  AUDIO.chaseTimer = setInterval(() => {
+    while(next < c.currentTime + .2){
+      const m = CHASE_MEL[i % 32], b = CHASE_BASS[i % 32], at = Math.max(0, next - c.currentTime);
+      if(m) tone(mtof(m), sd * .8, {type:"triangle", vol:.09, at});
+      if(b) tone(mtof(b), sd * .9, {type:"square", vol:.03, at});
+      next += sd; i++;
+    }
+  }, 50);
+}
+function stopChase(){ AUDIO.chaseOn = false; clearInterval(AUDIO.chaseTimer); stopLoop(AUDIO.chase); }
+function startBg(){
+  if(!CONFIG.music.background) return;
+  AUDIO.bg = AUDIO.bg || mkAudio(CONFIG.music.background);
+  if(AUDIO.bg.paused) playLoop(AUDIO.bg, .7);
+}
+function stopBg(){ stopLoop(AUDIO.bg); }
+// Trình duyệt chỉ cho phát tiếng sau lần chạm/bấm đầu tiên
+function onGesture(){
+  ac();
+  if(!$("intro").hidden && $("passForm").hidden) startChase();
+}
+["pointerdown","touchstart","keydown"].forEach(ev => document.addEventListener(ev, onGesture, {capture:true, passive:true}));
+$("mute").onclick = () => {
+  AUDIO.muted = !AUDIO.muted;
+  if(AUDIO.master) AUDIO.master.gain.value = AUDIO.muted ? 0 : 1;
+  [AUDIO.chase, AUDIO.bg].forEach(a => { if(a) a.muted = AUDIO.muted; });
+  $("mute").textContent = AUDIO.muted ? "🔇" : "🔊";
+  $("mute").setAttribute("aria-label", AUDIO.muted ? "Bật âm thanh" : "Tắt âm thanh");
+};
 
 /* ✏️ [TÙY CHỌN] Các dòng chữ chạy ở màn hack — sửa chữ trong ngoặc kép thoải mái.
    "dim" = chữ xanh mờ, "warn" = chữ vàng cảnh báo, "" = chữ xanh thường.
@@ -361,12 +460,12 @@ async function scan(){
   const b=$("go"); b.disabled=true; b.hidden=true;
   $("log").querySelector(".caret")?.remove();
   line("","> Đang quét..."); $("prog").hidden=false;
-  for(let p=0;p<=100;p+=4){ $("progb").style.width=p+"%"; await wait(55); }
+  for(let p=0,k=0;p<=100;p+=4,k++){ $("progb").style.width=p+"%"; if(k%3===0) beep(); await wait(55); }
   $("prog").hidden=true;
   $("ipwrap").hidden=false;
   const ip=CONFIG.ip, el=$("ip");
-  for(let i=0;i<14;i++){ el.textContent=ip.replace(/\d/g,()=>Math.floor(Math.random()*10)); await wait(70); }
-  el.textContent=ip;
+  for(let i=0;i<14;i++){ el.textContent=ip.replace(/\d/g,()=>Math.floor(Math.random()*10)); tick(); await wait(70); }
+  el.textContent=ip; found();
   await wait(500);
   for(const [c,t] of after){ line(c,t); await wait(650); }
   caret();
@@ -390,6 +489,7 @@ async function swap(fromId,toId,beforeShow){
 }
 
 function openCard(){
+  startBg();
   swap("term","card",()=>{
     document.body.style.background="var(--card-bg)";
     document.documentElement.style.colorScheme="light";
@@ -492,6 +592,7 @@ function confetti(){
 }
 
 $("replay").onclick=()=>{
+  stopBg();
   swap("card","term",()=>{
     document.body.style.background=""; document.documentElement.style.colorScheme="";
     $("term").querySelector(".crt").classList.remove("glitch");
@@ -557,6 +658,7 @@ function dodge(e){
 addEventListener("resize", () => { if (cancelBtn.classList.contains("flee")) dodge(); });
 
 $("openBtn").onclick = () => {
+  stopChase();
   $("choices").hidden = true; $("taunt").hidden = true;
   cancelBtn.classList.remove("flee"); cancelBtn.style.left = cancelBtn.style.top = "";
   $("passForm").hidden = false; $("err").textContent = ""; $("code").value = "";
@@ -564,6 +666,7 @@ $("openBtn").onclick = () => {
 };
 $("backBtn").onclick = () => {
   $("passForm").hidden = true; $("choices").hidden = false; $("taunt").hidden = false;
+  startChase();
 };
 let wrong = 0;
 $("passForm").addEventListener("submit", e => {
@@ -575,7 +678,8 @@ $("passForm").addEventListener("submit", e => {
     $("err").textContent = wrong >= 2
       ? "Sai rồi! Gợi ý: ngày sinh của bạn (ddmmyyyy) 🎂"   // ✏️ gợi ý từ lần sai thứ 2
       : "Sai mật mã rồi, thử lại nha!";                     // ✏️ báo lỗi lần sai đầu
-    const f = $("passForm"); f.classList.remove("shake"); void f.offsetWidth; f.classList.add("shake");
+    buzz();
+    const f = document.querySelector("#intro .letter"); f.classList.remove("shake-hard"); void f.offsetWidth; f.classList.add("shake-hard");
     $("code").select();
   }
 });
