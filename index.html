@@ -61,6 +61,17 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 .who strong{font-weight:600}
 .photo{aspect-ratio:4/5;max-width:100%;border-radius:18px;background:var(--card-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;transform:rotate(-1.5deg);box-shadow:0 14px 30px -14px rgba(43,15,46,.35)}
 .photo img{width:100%;height:100%;object-fit:cover}
+/* Bộ ảnh vuốt (màn "Nhân vật chính hôm nay") */
+.slides{width:100%;height:100%;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.slides::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;height:100%;scroll-snap-align:center;position:relative;overflow:hidden}
+.slide .bg{position:absolute;inset:-30px;background-size:cover;background-position:center;filter:blur(20px) brightness(.85);transform:scale(1.1)}
+.slide img{position:relative;object-fit:contain}
+.gnav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:-8px}
+.gnav button{width:44px;height:44px;border-radius:50%;border:2px solid var(--card-ink);background:none;color:var(--card-ink);font:700 20px/1 var(--body);cursor:pointer}
+.gnav button:hover{background:var(--card-ink);color:var(--card-bg)}
+.gnav button:focus-visible{outline:2px solid var(--card-accent);outline-offset:3px}
+.gnav span{font:600 13px/1.3 var(--mono);color:#a3546f;text-align:center;font-variant-numeric:tabular-nums}
 .photo .ph{font:500 14px/1.5 var(--mono);color:#a3546f;text-align:center;padding:16px;border:2px dashed #f2a3bc;border-radius:12px;margin:18px}
 .msg{font-size:17px;line-height:1.7;margin:0;white-space:pre-line}
 .msg.empty{font-family:var(--mono);font-size:14px;color:#a3546f;border:2px dashed #f2a3bc;border-radius:12px;padding:16px}
@@ -206,6 +217,11 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
       <div class="eyebrow">Ảnh dành riêng</div>
       <h2 class="h2">Nhân vật chính hôm nay</h2>
       <div class="photo" id="photo"></div>
+      <div class="gnav" id="gnav" hidden>
+        <button type="button" id="gPrev" aria-label="Ảnh trước">‹</button>
+        <span id="gCount">1 / 1</span>
+        <button type="button" id="gNext" aria-label="Ảnh sau">›</button>
+      </div>
       <button class="next" type="button" data-go="2">Đọc lời chúc →</button>
     </article>
 
@@ -271,8 +287,20 @@ const CONFIG = {
   ip: "20.11.20.04",
 
   // ✏️ [5] ẢNH RIÊNG CỦA LINH (màn số 2) — xem "CÁCH CHÈN ẢNH" ở trên
-  //        Ảnh dọc (tỉ lệ 4:5) là đẹp nhất; ảnh khác tỉ lệ sẽ tự cắt vừa khung
-  photo: "",
+  //        Nhiều ảnh: liệt kê trong [ ], mỗi ảnh trong "..." cách nhau dấu phẩy → thành bộ ảnh vuốt.
+  //        Thêm/bớt/đổi thứ tự thoải mái. Ảnh nằm trong thư mục "anh".
+  photo: [
+    "anh/linh-01.jpg",
+    "anh/linh-02.jpg",
+    "anh/linh-03.jpg",
+    "anh/linh-04.jpg",
+    "anh/linh-05.jpg",
+    "anh/linh-06.jpg",
+    "anh/linh-07.jpg",
+    "anh/linh-08.jpg",
+    "anh/linh-09.jpg",
+    "anh/linh-10.jpg"
+  ],
 
   // ✏️ [6] LỜI CHÚC (màn số 3) — viết giữa hai dấu ngoặc kép, xuống dòng dùng \n
   //        vd: "Chúc Linh tuổi 22 thật rực rỡ!\nLuôn vui vẻ, xinh đẹp và đạt mọi điều mong muốn."
@@ -306,7 +334,7 @@ const intro = [
   ["warn","> Sẵn sàng truy vết địa chỉ IP."]
 ];
 const after = [
-  ["","> Vị trí: trung tâm vũ trụ của hội bạn"],
+  ["","> Vị trí: trong tim Quang"],
   ["","> Nhà mạng: Tuổi 22 Telecom"],
   ["","> Tốc độ dễ thương: 1000 Gbps"],
   ["warn","> ⚠ CẢNH BÁO: phát hiện SINH NHẬT trong vòng 0 ngày!"]
@@ -412,7 +440,8 @@ function fillCard(){
   if(CONFIG.message.trim()){ m.textContent=CONFIG.message; m.classList.remove("empty"); }
   else { m.textContent="[ Lời chúc sẽ được chèn vào đây ]"; m.classList.add("empty"); }
   const p=$("photo");
-  if(CONFIG.photo){ p.innerHTML=""; const img=new Image(); img.src=CONFIG.photo; img.alt=CONFIG.nickname; p.appendChild(img); }
+  const photos=[].concat(CONFIG.photo||[]).filter(Boolean);
+  if(photos.length) buildGallery(p, photos);
   else p.innerHTML='<div class="ph">[ Ảnh của '+CONFIG.nickname+' ]</div>';
   $("sig").textContent=CONFIG.from ? "— "+CONFIG.from : "";
   $("nick2").textContent=CONFIG.nickname;
@@ -420,6 +449,31 @@ function fillCard(){
   if(CONFIG.giftPhoto){ gp.innerHTML=""; const img=new Image(); img.src=CONFIG.giftPhoto; img.alt="Quà sinh nhật"; gp.appendChild(img); }
   else gp.innerHTML='<div class="ph">[ Ảnh món quà ]</div>';
   $("giftCap").textContent=CONFIG.giftCaption || "Chúc mừng sinh nhật! 🎉";
+}
+
+function buildGallery(el, list){
+  el.innerHTML="";
+  const track=document.createElement("div"); track.className="slides";
+  list.forEach((src,i)=>{
+    const s=document.createElement("div"); s.className="slide";
+    const bg=document.createElement("div"); bg.className="bg"; bg.style.backgroundImage='url("'+src+'")';
+    const img=new Image(); img.src=src; img.alt=CONFIG.nickname+" — ảnh "+(i+1);
+    img.loading=i<2?"eager":"lazy"; img.decoding="async";
+    s.append(bg,img); track.appendChild(s);
+  });
+  el.appendChild(track);
+  if(list.length<2) return;
+  $("gnav").hidden=false;
+  const idx=()=>track.clientWidth?Math.round(track.scrollLeft/track.clientWidth):0;
+  const upd=()=>{ $("gCount").textContent=(idx()+1)+" / "+list.length+"\nvuốt để xem thêm"; };
+  $("gCount").style.whiteSpace="pre-line";
+  const go=d=>{
+    let n=idx()+d; if(n<0) n=list.length-1; if(n>=list.length) n=0;
+    track.scrollTo({left:n*track.clientWidth, behavior:reduce?"auto":"smooth"});
+  };
+  $("gPrev").onclick=()=>go(-1); $("gNext").onclick=()=>go(1);
+  track.addEventListener("scroll",()=>requestAnimationFrame(upd),{passive:true});
+  upd();
 }
 
 function confetti(){
