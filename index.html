@@ -149,9 +149,11 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 .shake-hard{animation:shakeHard .55s}
 @keyframes shakeHard{10%,50%,90%{transform:translate(-12px,2px) rotate(-1.2deg)}30%,70%{transform:translate(12px,-2px) rotate(1.2deg)}}
 .mute{position:fixed;top:max(12px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));z-index:30;width:42px;height:42px;border-radius:50%;border:0;background:rgba(0,0,0,.35);color:#fff;font-size:18px;cursor:pointer;backdrop-filter:blur(6px)}
+.mute.locked{width:auto;height:auto;padding:10px 14px;border-radius:999px;font:600 13px/1 var(--body);background:#ff3f78;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.07);box-shadow:0 0 0 8px rgba(255,63,120,.25)}}
 .mute:focus-visible{outline:2px solid #ffd6e2;outline-offset:3px}
 
-@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.shake-hard,.giftbox,.screen.enter,.screen.leave,.step.leave{animation:none}.cbtn.cancel{transition:none}}
+@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.shake-hard,.giftbox,.screen.enter,.screen.leave,.step.leave,.mute.locked{animation:none}.cbtn.cancel{transition:none}}
 </style>
 </head>
 <body>
@@ -327,7 +329,7 @@ const CONFIG = {
   //   vd: background: "nhac/1-doi.mp3"
   music: {
     chase: "",
-    background: ""
+    background: "nhac/nhac-nen.mp3"
   }   // ← dòng cuối: KHÔNG có dấu phẩy
 };
 /* ═══════════════════ HẾT PHẦN CẦN ĐIỀN BẮT BUỘC ═══════════════════ */
@@ -360,6 +362,25 @@ function tone(freq, dur, {type="sine", vol=.2, at=0, slide=0} = {}){
 const beep  = () => tone(1760, .06, {type:"square", vol:.06});
 const tick  = () => tone(1150, .03, {type:"square", vol:.04});
 const found = () => { tone(880, .12, {type:"square", vol:.07}); tone(1320, .3, {type:"square", vol:.07, at:.13}); };
+// Tiếng "nhận dữ liệu" khi mỗi dòng thông tin hiện ra
+const dataBlip = () => { tone(2200, .04, {type:"square", vol:.05}); tone(1650, .04, {type:"square", vol:.05, at:.06}); tone(2600, .05, {type:"square", vol:.05, at:.12}); };
+// Còi báo động: hú lên xuống 3 lần
+function siren(){
+  const c = ac(); if(!c) return;
+  const t = c.currentTime, o = c.createOscillator(), o2 = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
+  o.type = "sawtooth"; o2.type = "square"; f.type = "lowpass"; f.frequency.value = 2800;
+  const cycles = 3, per = .7;
+  for(let k = 0; k < cycles; k++){
+    const s = t + k * per;
+    o.frequency.setValueAtTime(620, s);  o.frequency.linearRampToValueAtTime(1250, s + per * .5); o.frequency.linearRampToValueAtTime(620, s + per);
+    o2.frequency.setValueAtTime(625, s); o2.frequency.linearRampToValueAtTime(1258, s + per * .5); o2.frequency.linearRampToValueAtTime(625, s + per);
+  }
+  const end = t + cycles * per;
+  g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.09, t + .08);
+  g.gain.setValueAtTime(.09, end - .15); g.gain.exponentialRampToValueAtTime(.0001, end);
+  o.connect(f); o2.connect(f); f.connect(g); g.connect(AUDIO.master);
+  o.start(t); o2.start(t); o.stop(end + .05); o2.stop(end + .05);
+}
 // Tiếng "è è" rung rung khi sai mật mã + rung điện thoại
 function buzz(){
   const c = ac();
@@ -373,6 +394,22 @@ function buzz(){
     trem.connect(out); out.connect(AUDIO.master); lfo.start(t); lfo.stop(t + .62);
   }
   try { navigator.vibrate && navigator.vibrate([90,50,90,50,160]); } catch(e){}
+}
+// Tiếng pháo giấy: 1 tiếng "bụp" + tiếng nổ lách tách rải rác
+function noiseBurst(at, dur, vol, freq, q){
+  const c = ac(); if(!c) return;
+  const t = c.currentTime + at, len = Math.ceil(c.sampleRate * dur);
+  const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+  for(let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf; f.type = "bandpass"; f.frequency.value = freq; f.Q.value = q; g.gain.value = vol;
+  s.connect(f); f.connect(g); g.connect(AUDIO.master); s.start(t);
+}
+function popSound(){
+  noiseBurst(0, .35, 1.4, 900, .6);                                  // bụp
+  tone(150, .25, {type:"sine", vol:.35, slide:45});                  // tiếng trầm
+  for(let i = 0; i < 26; i++)                                        // lách tách
+    noiseBurst(.12 + Math.random() * 1.3, .04, .25 + Math.random() * .35, 2500 + Math.random() * 4000, 1.5);
 }
 // Nhạc rượt đuổi tự tạo (dùng khi music.chase để trống)
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -408,17 +445,34 @@ function startBg(){
 }
 function stopBg(){ stopLoop(AUDIO.bg); }
 // Trình duyệt chỉ cho phát tiếng sau lần chạm/bấm đầu tiên
+// iPhone: cho phép phát tiếng kể cả khi gạt công tắc im lặng
+try { if(navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}
+let unlocked = false;
+function updMute(){
+  const on = unlocked && !AUDIO.muted, b = $("mute");
+  b.textContent = !unlocked ? "🔇 Chạm để bật tiếng" : (AUDIO.muted ? "🔇" : "🔊");
+  b.classList.toggle("locked", !unlocked);
+  b.setAttribute("aria-label", on ? "Tắt âm thanh" : "Bật âm thanh");
+}
 function onGesture(){
-  ac();
+  const c = ac(); if(!c) return;
+  if(!unlocked){
+    // phát 1 âm im lặng để "mở khóa" âm thanh trên iOS
+    const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0);
+  }
+  const done = () => { if(c.state === "running" && !unlocked){ unlocked = true; updMute(); } };
+  if(c.state !== "running") c.resume().then(done).catch(()=>{}); else done();
   if(!$("intro").hidden && $("passForm").hidden) startChase();
 }
-["pointerdown","touchstart","keydown"].forEach(ev => document.addEventListener(ev, onGesture, {capture:true, passive:true}));
+["pointerdown","pointerup","touchend","mousedown","click","keydown"].forEach(ev =>
+  document.addEventListener(ev, onGesture, {capture:true, passive:true}));
+updMute();
 $("mute").onclick = () => {
+  if(!unlocked) return;   // lần chạm đầu chỉ để mở khóa âm thanh
   AUDIO.muted = !AUDIO.muted;
   if(AUDIO.master) AUDIO.master.gain.value = AUDIO.muted ? 0 : 1;
   [AUDIO.chase, AUDIO.bg].forEach(a => { if(a) a.muted = AUDIO.muted; });
-  $("mute").textContent = AUDIO.muted ? "🔇" : "🔊";
-  $("mute").setAttribute("aria-label", AUDIO.muted ? "Bật âm thanh" : "Tắt âm thanh");
+  updMute();
 };
 
 /* ✏️ [TÙY CHỌN] Các dòng chữ chạy ở màn hack — sửa chữ trong ngoặc kép thoải mái.
@@ -467,7 +521,11 @@ async function scan(){
   for(let i=0;i<14;i++){ el.textContent=ip.replace(/\d/g,()=>Math.floor(Math.random()*10)); tick(); await wait(70); }
   el.textContent=ip; found();
   await wait(500);
-  for(const [c,t] of after){ line(c,t); await wait(650); }
+  for(const [c,t] of after){
+    line(c,t);
+    if(c==="warn"){ siren(); await wait(2100); }   // cảnh báo → còi báo động (~2 giây)
+    else { dataBlip(); await wait(650); }
+  }
   caret();
   $("term").querySelector(".crt").classList.add("glitch");
   await wait(900);
@@ -577,6 +635,7 @@ function buildGallery(el, list){
 }
 
 function confetti(){
+  popSound();
   if(reduce) return;
   const cv=$("confetti"), ctx=cv.getContext("2d");
   const W=cv.width=innerWidth*devicePixelRatio, H=cv.height=innerHeight*devicePixelRatio;
