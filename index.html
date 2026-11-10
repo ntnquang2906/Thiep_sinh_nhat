@@ -1,0 +1,491 @@
+<title>Thiệp Linh Ozeo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Be+Vietnam+Pro:wght@400;600&display=swap">
+<style>
+/* Layout: one screen at a time — terminal prank → glitch → birthday card. Single committed look. */
+:root{
+  --term-bg:#06100a; --term-fg:#7dffb0; --term-dim:#3f8a5e; --term-warn:#ffcf4a;
+  --card-bg:#fff2f5; --card-ink:#2b0f2e; --card-accent:#ff3f78; --card-soft:#ffd6e2; --card-gold:#ffb23f;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --display:"Bricolage Grotesque","Be Vietnam Pro",system-ui,sans-serif;
+  --body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);overflow-x:hidden}
+.screen{min-height:100%;box-sizing:border-box;padding-block:32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:center;align-items:center}
+
+/* ---------- Terminal ---------- */
+#term{background:radial-gradient(ellipse at 50% 40%,#0c2015 0%,var(--term-bg) 70%)}
+.crt{width:100%;max-width:640px;position:relative}
+.crt::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
+.bar{display:flex;gap:6px;align-items:center;margin-bottom:18px;color:var(--term-dim);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.bar i{width:9px;height:9px;border-radius:50%;background:var(--term-dim);display:inline-block}
+.bar span{margin-left:8px}
+.log{font-size:clamp(13px,3.4vw,15px);line-height:1.75;min-height:12em;white-space:pre-wrap;word-break:break-word}
+.log .dim{color:var(--term-dim)}
+.log .warn{color:var(--term-warn)}
+.caret{display:inline-block;width:.6em;height:1.1em;background:var(--term-fg);vertical-align:-3px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.ip{font-size:clamp(34px,11vw,72px);font-weight:700;letter-spacing:.02em;margin:18px 0 6px;text-shadow:0 0 18px rgba(125,255,176,.45);font-variant-numeric:tabular-nums}
+.btn{font:700 15px/1 var(--mono);color:var(--term-bg);background:var(--term-fg);border:0;border-radius:4px;padding:14px 22px;margin-top:22px;cursor:pointer;letter-spacing:.04em}
+.btn:hover{filter:brightness(1.1)}
+.btn:focus-visible{outline:2px solid var(--term-warn);outline-offset:3px}
+.progress{height:6px;background:#11281a;border-radius:3px;overflow:hidden;margin-top:14px}
+.progress b{display:block;height:100%;width:0;background:var(--term-fg);transition:width .12s linear}
+.glitch{animation:glitch .5s steps(2) 4}
+@keyframes glitch{0%{transform:translate(0)}25%{transform:translate(-4px,2px);filter:hue-rotate(90deg)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-1px);filter:hue-rotate(-90deg)}}
+
+/* ---------- Card ---------- */
+#card{background:var(--card-bg);color:var(--card-ink);font-family:var(--body)}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+.card{width:100%;max-width:520px;display:flex;flex-direction:column;gap:22px;text-align:left;position:relative;z-index:6}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--card-accent)}
+.hbd{font-family:var(--display);font-weight:800;font-size:clamp(44px,13vw,84px);line-height:.92;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.hbd em{font-style:normal;color:var(--card-accent)}
+.who{font-size:18px;margin:0}
+.who strong{font-weight:600}
+.photo{aspect-ratio:4/5;max-width:100%;border-radius:18px;background:var(--card-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;transform:rotate(-1.5deg);box-shadow:0 14px 30px -14px rgba(43,15,46,.35)}
+.photo img{width:100%;height:100%;object-fit:cover}
+.photo .ph{font:500 14px/1.5 var(--mono);color:#a3546f;text-align:center;padding:16px;border:2px dashed #f2a3bc;border-radius:12px;margin:18px}
+.msg{font-size:17px;line-height:1.7;margin:0;white-space:pre-line}
+.msg.empty{font-family:var(--mono);font-size:14px;color:#a3546f;border:2px dashed #f2a3bc;border-radius:12px;padding:16px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-top:2px solid var(--card-ink);padding-top:14px}
+.stats div{display:flex;flex-direction:column;gap:4px}
+.stats b{font-family:var(--display);font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
+.sig{font-size:15px;margin:0;opacity:.85}
+.replay{align-self:flex-start;font:600 13px/1 var(--mono);background:none;border:2px solid var(--card-ink);color:var(--card-ink);border-radius:999px;padding:10px 16px;cursor:pointer}
+.replay:focus-visible{outline:2px solid var(--card-accent);outline-offset:3px}
+.pop{animation:pop .7s cubic-bezier(.2,.9,.3,1.3) both}
+@keyframes pop{from{transform:scale(.92) translateY(14px)}to{transform:none}}
+
+/* ---------- Card steps ---------- */
+.card-wrap{width:100%;max-width:520px;display:flex;flex-direction:column;gap:22px;position:relative;z-index:6}
+.dots{display:flex;gap:8px}
+.dots i{width:28px;height:5px;border-radius:3px;background:var(--card-soft);transition:background .3s}
+.dots i.on{background:var(--card-accent)}
+.h2{font-family:var(--display);font-weight:800;font-size:clamp(30px,8vw,44px);line-height:1;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.next{align-self:flex-start;font:600 16px/1 var(--body);background:var(--card-ink);color:var(--card-bg);border:0;border-radius:999px;padding:15px 26px;cursor:pointer}
+.next:hover{background:var(--card-accent)}
+.next:focus-visible{outline:2px solid var(--card-accent);outline-offset:3px}
+.note{background:#fff;border-radius:18px;padding:24px 22px;box-shadow:0 14px 30px -18px rgba(43,15,46,.35);display:flex;flex-direction:column;gap:16px;background-image:repeating-linear-gradient(transparent 0 31px,#ffe1ea 31px 32px);background-position:0 18px}
+.note .msg.empty{background:#fff}
+.giftbox{position:relative;width:180px;height:170px;align-self:center;background:none;border:0;cursor:pointer;animation:wiggle 1.6s ease-in-out infinite}
+.giftbox .box{position:absolute;left:15px;right:15px;bottom:0;height:110px;background:var(--card-accent);border-radius:8px}
+.giftbox .lid{position:absolute;left:5px;right:5px;top:30px;height:34px;background:#e62e64;border-radius:8px;z-index:2;transition:transform .6s cubic-bezier(.3,1.4,.5,1),opacity .6s}
+.giftbox .ribbon{position:absolute;left:50%;top:30px;bottom:0;width:22px;transform:translateX(-50%);background:var(--card-gold);z-index:3;transition:opacity .4s}
+.giftbox .lid::before,.giftbox .lid::after{content:"";position:absolute;top:-28px;width:40px;height:32px;border:7px solid var(--card-gold);border-radius:50% 50% 0 50%}
+.giftbox .lid::before{left:calc(50% - 44px);transform:rotate(-20deg)}
+.giftbox .lid::after{right:calc(50% - 44px);transform:rotate(20deg) scaleX(-1)}
+.giftbox.opened{animation:none;cursor:default}
+.giftbox.opened .lid{transform:translateY(-120px) rotate(-25deg);opacity:0}
+.giftbox.opened .ribbon{opacity:0}
+.giftbox:focus-visible{outline:2px solid var(--card-accent);outline-offset:6px;border-radius:12px}
+@keyframes wiggle{0%,100%{transform:rotate(0)}10%{transform:rotate(-6deg)}20%{transform:rotate(6deg)}30%{transform:rotate(0)}}
+.gift{display:flex;flex-direction:column;gap:14px}
+.gift-photo{aspect-ratio:1/1;transform:rotate(1deg)}
+.gift-cap{font-size:17px;font-weight:600;margin:0;text-align:center}
+
+/* ---------- Intro: secret letter ---------- */
+#intro{background:radial-gradient(ellipse at 50% 30%,#3a1430 0%,#1a0716 75%);color:#fbe9ef;font-family:var(--body)}
+.letter{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:22px;text-align:center}
+.env{position:relative;width:min(300px,82vw);aspect-ratio:3/2;background:#f3e3cf;border-radius:10px;box-shadow:0 24px 50px -20px rgba(0,0,0,.6);overflow:hidden;animation:float 3.2s ease-in-out infinite}
+.env::before{content:"";position:absolute;inset:0 0 auto 0;height:62%;background:#e8d2b6;clip-path:polygon(0 0,100% 0,50% 100%)}
+.env::after{content:"";position:absolute;inset:auto 0 0 0;height:100%;background:linear-gradient(to top right,#ecd9c0 50%,transparent 50%) left/50% 100% no-repeat,linear-gradient(to top left,#ecd9c0 50%,transparent 50%) right/50% 100% no-repeat}
+.seal{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%) rotate(-8deg);z-index:2;width:74px;height:74px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e8455f,#a3122d);color:#ffe3e8;display:flex;align-items:center;justify-content:center;font:800 11px/1.1 var(--display);letter-spacing:.06em;text-align:center;box-shadow:0 4px 0 #7a0d22}
+.stamp{position:absolute;right:12px;top:10px;z-index:2;font:700 10px/1 var(--mono);color:#a3122d;border:2px solid #a3122d;padding:4px 6px;transform:rotate(6deg);letter-spacing:.1em}
+@keyframes float{50%{transform:translateY(-6px) rotate(-1deg)}}
+.tm{font-family:var(--display);font-weight:800;font-size:clamp(34px,10vw,52px);letter-spacing:.02em;margin:0;color:#ffd6e2;text-transform:uppercase}
+.ask{font-size:17px;margin:0;line-height:1.5}
+.ask b{color:#ff8fb1}
+.choices{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;min-height:52px}
+.cbtn{font:600 16px/1 var(--body);border-radius:999px;padding:15px 30px;cursor:pointer;border:0}
+.cbtn.open{background:#ff3f78;color:#fff}
+.cbtn.cancel{background:#ff3f78;color:#fff;font-weight:800;box-shadow:0 8px 22px -8px rgba(255,63,120,.7);transition:left .18s ease,top .18s ease;touch-action:none}
+.cbtn.soft{background:#4a1f3f;color:#e9c3d2;font-weight:500}
+.cbtn.soft:hover{background:#5a2a4d}
+/* ✏️ [TÙY CHỌN] Kích thước nút nhạt: tăng font-size/padding nếu muốn dễ thấy hơn */
+.cbtn.soft{transition:opacity .8s ease;font-size:11px;padding:6px 11px;align-self:center;background:#3a1834;color:#b58aa3}
+.cbtn.soft.wait{visibility:hidden;opacity:0}
+.cbtn.cancel.flee{position:fixed;z-index:20;margin:0}
+.cbtn:focus-visible{outline:2px solid #ffd6e2;outline-offset:3px}
+.pass{display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px}
+.pass label{font-size:14px;opacity:.85}
+.pass input{font:700 22px/1 var(--mono);letter-spacing:.3em;text-align:center;padding:14px;border-radius:12px;border:2px solid #ff8fb1;background:#2a0c24;color:#fff;width:100%;box-sizing:border-box}
+.pass input:focus{outline:none;border-color:#ffd6e2}
+.pass .row{display:flex;gap:10px}
+.pass .row .cbtn{flex:1;padding:14px}
+.pass .back{background:transparent;color:#fbe9ef;border:2px solid #6b2a55}
+.err{font-size:14px;color:#ffb23f;min-height:1.4em;margin:0}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.taunt{font-size:13px;opacity:.7;min-height:1.3em;margin:0}
+
+@media (prefers-reduced-motion:reduce){.caret,.glitch,.pop,.env,.shake,.giftbox{animation:none}.cbtn.cancel{transition:none}}
+</style>
+
+<section id="intro" class="screen">
+  <div class="letter">
+    <div class="env" aria-hidden="true">
+      <div class="stamp">CONFIDENTIAL</div>
+      <div class="seal">TUYỆT<br>MẬT</div>
+    </div>
+    <!-- ✏️ [TÙY CHỌN] Tiêu đề phong bì và câu hỏi bên dưới — sửa chữ trực tiếp ở 2 dòng này -->
+    <h1 class="tm">Thư tuyệt mật</h1>
+    <p class="ask">Nếu yêu <b>Quang</b> thì ấn mở 💌</p>
+    <!-- Nút trái (đậm) = nút bỏ chạy, không bấm được. Nút phải (nhạt) = nút thật, mở ô mật mã -->
+    <!-- ✏️ [TÙY CHỌN] Đổi chữ trên nút: sửa chữ "Mở" giữa <button ...> và </button> -->
+
+    <div class="choices" id="choices">
+      <button class="cbtn cancel" id="cancelBtn" type="button">Mở</button>
+      <button class="cbtn soft wait" id="openBtn" type="button">Mở</button>
+    </div>
+    <p class="taunt" id="taunt"></p>
+    <form class="pass" id="passForm" hidden>
+      <label for="code">Nhập mật mã để mở thư</label>
+      <input id="code" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••••••">
+      <p class="err" id="err"></p>
+      <div class="row">
+        <button class="cbtn back" type="button" id="backBtn">Quay lại</button>
+        <button class="cbtn open" type="submit">Mở khóa</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section id="term" class="screen" hidden>
+  <div class="crt">
+    <div class="bar"><i></i><i></i><i></i><span>ozeo-tracker v20.11</span></div>
+    <div class="log" id="log"></div>
+    <div id="ipwrap" hidden>
+      <div class="ip" id="ip">--.--.--.--</div>
+    </div>
+    <div class="progress" id="prog" hidden><b id="progb"></b></div>
+    <button class="btn" id="go">▶ XÁC ĐỊNH IP</button>
+  </div>
+</section>
+
+<section id="card" class="screen" hidden>
+  <canvas id="confetti"></canvas>
+  <!-- ✏️ [TÙY CHỌN] 4 màn của thiệp: các tiêu đề (eyebrow, h1, h2) và chữ trên nút "Xem tiếp →",
+       "Đọc lời chúc →", "Nhận quà 🎁" đều sửa trực tiếp được ngay bên dưới.
+       Ảnh, lời chúc, chữ ký, ảnh quà thì KHÔNG điền ở đây — điền trong khối CONFIG ở cuối file. -->
+  <div class="card-wrap">
+    <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+    <article class="card step pop" data-step="0">
+      <div class="eyebrow">20 · 11 · 2026 — tuổi 22</div>
+      <h1 class="hbd">Chúc mừng <em>sinh nhật</em>!</h1>
+      <p class="who">Gửi <strong id="fullName"></strong> — aka <strong id="nick"></strong></p>
+      <div class="stats">
+        <div><b>22</b><span>tuổi mới</span></div>
+        <div><b id="days">0</b><span>ngày đã sống</span></div>
+        <div><b>∞</b><span>lời chúc</span></div>
+      </div>
+      <button class="next" type="button" data-go="1">Xem tiếp →</button>
+    </article>
+
+    <article class="card step" data-step="1" hidden>
+      <div class="eyebrow">Ảnh dành riêng</div>
+      <h2 class="h2">Nhân vật chính hôm nay</h2>
+      <div class="photo" id="photo"></div>
+      <button class="next" type="button" data-go="2">Đọc lời chúc →</button>
+    </article>
+
+    <article class="card step" data-step="2" hidden>
+      <div class="eyebrow">Lời chúc</div>
+      <h2 class="h2">Gửi <span id="nick2"></span></h2>
+      <div class="note">
+        <p class="msg" id="msg"></p>
+        <p class="sig" id="sig"></p>
+      </div>
+      <button class="next" type="button" data-go="3">Nhận quà 🎁</button>
+    </article>
+
+    <article class="card step" data-step="3" hidden>
+      <div class="eyebrow">Phần quà</div>
+      <h2 class="h2" id="giftTitle">Chạm vào hộp quà để mở</h2>
+      <button class="giftbox" id="giftbox" type="button" aria-label="Mở hộp quà">
+        <span class="lid"></span><span class="box"></span><span class="ribbon"></span>
+      </button>
+      <div class="gift" id="gift" hidden>
+        <div class="photo gift-photo" id="giftPhoto"></div>
+        <p class="gift-cap" id="giftCap"></p>
+      </div>
+      <button class="replay" id="replay" type="button">↺ Xem lại từ đầu</button>
+    </article>
+  </div>
+</section>
+
+<script>
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  ✏️  PHẦN CẦN ĐIỀN — chỉ cần sửa trong khối CONFIG này là đủ       ║
+   ║  Tìm nhanh: Ctrl+F gõ "✏️" để nhảy tới mọi chỗ có thể chỉnh        ║
+   ╠══════════════════════════════════════════════════════════════════╣
+   ║  QUY TẮC CHUNG                                                     ║
+   ║  • Chỉ sửa chữ NẰM GIỮA hai dấu ngoặc kép "..."                    ║
+   ║  • Giữ nguyên dấu phẩy , ở cuối mỗi dòng (trừ dòng cuối cùng)      ║
+   ║  • Trong chữ nếu cần dấu ngoặc kép thì viết \"  (vd: \"Ozeo\")     ║
+   ║  • Muốn xuống dòng trong lời chúc thì gõ \n                        ║
+   ╠══════════════════════════════════════════════════════════════════╣
+   ║  CÁCH CHÈN ẢNH (photo, giftPhoto) — chọn 1 trong 3 cách:           ║
+   ║  1) Link ảnh online, phải là link trực tiếp tới file ảnh           ║
+   ║     vd: "https://i.imgur.com/abc123.jpg"                           ║
+   ║     (Lưu ý: khi publish lên claude.ai, link ngoài có thể bị chặn   ║
+   ║      → nên dùng cách 2 hoặc 3 nếu ảnh không hiện)                  ║
+   ║  2) File ảnh đặt CÙNG THƯ MỤC với file .html này                   ║
+   ║     vd: "linh.jpg"  hoặc  "qua.png"                                ║
+   ║  3) Gửi ảnh cho Claude → Claude nhúng thẳng ảnh vào code           ║
+   ║     (chắc chắn hiện, không phụ thuộc link)                         ║
+   ║  Để trống "" thì thiệp hiện khung chờ có viền nét đứt.             ║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+const CONFIG = {
+
+  // ✏️ [1] Họ tên đầy đủ — hiện ở màn hack ("Đối tượng: ...") và trên thiệp
+  fullName: "Nguyễn Hà Linh",
+
+  // ✏️ [2] Biệt danh — hiện ở màn hack, lời chúc, hộp quà
+  nickname: "Linh Ozeo",
+
+  // ✏️ [3] Ngày sinh, định dạng NĂM-THÁNG-NGÀY (dùng để đếm "số ngày đã sống")
+  birthday: "2004-11-20",
+
+  // ✏️ [4] Dãy "IP" hiện ra khi quét — 4 cụm số cách nhau bằng dấu chấm
+  ip: "20.11.20.04",
+
+  // ✏️ [5] ẢNH RIÊNG CỦA LINH (màn số 2) — xem "CÁCH CHÈN ẢNH" ở trên
+  //        Ảnh dọc (tỉ lệ 4:5) là đẹp nhất; ảnh khác tỉ lệ sẽ tự cắt vừa khung
+  photo: "",
+
+  // ✏️ [6] LỜI CHÚC (màn số 3) — viết giữa hai dấu ngoặc kép, xuống dòng dùng \n
+  //        vd: "Chúc Linh tuổi 22 thật rực rỡ!\nLuôn vui vẻ, xinh đẹp và đạt mọi điều mong muốn."
+  message: "",
+
+  // ✏️ [7] Tên người gửi — ký ở cuối lời chúc dạng "— Quang". Để "" thì không ký
+  from: "",
+
+  // ✏️ [8] ẢNH MÓN QUÀ (màn số 4, hiện sau khi mở hộp) — ảnh vuông (1:1) là đẹp nhất
+  giftPhoto: "",
+
+  // ✏️ [9] Dòng chữ dưới ảnh quà. Để "" thì hiện mặc định "Chúc mừng sinh nhật! 🎉"
+  //        vd: "Quà sẽ được giao tận tay vào 20/11 nha!"
+  giftCaption: ""   // ← dòng cuối: KHÔNG có dấu phẩy
+};
+/* ═══════════════════ HẾT PHẦN CẦN ĐIỀN BẮT BUỘC ═══════════════════ */
+
+const $ = id => document.getElementById(id);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const wait = ms => new Promise(r => setTimeout(r, reduce ? Math.min(ms, 60) : ms));
+
+/* ✏️ [TÙY CHỌN] Các dòng chữ chạy ở màn hack — sửa chữ trong ngoặc kép thoải mái.
+   "dim" = chữ xanh mờ, "warn" = chữ vàng cảnh báo, "" = chữ xanh thường.
+   `intro` hiện ngay lúc đầu; `after` hiện sau khi đã ra IP. */
+const intro = [
+  ["dim","$ ./ozeo-tracker --target"],
+  ["","> Đang khởi động hệ thống..."],
+  ["","> Kết nối vệ tinh: OK"],
+  ["","> Đối tượng: " + CONFIG.fullName.toUpperCase()],
+  ["","> Biệt danh: " + CONFIG.nickname],
+  ["warn","> Sẵn sàng truy vết địa chỉ IP."]
+];
+const after = [
+  ["","> Vị trí: trung tâm vũ trụ của hội bạn"],
+  ["","> Nhà mạng: Tuổi 22 Telecom"],
+  ["","> Tốc độ dễ thương: 1000 Gbps"],
+  ["warn","> ⚠ CẢNH BÁO: phát hiện SINH NHẬT trong vòng 0 ngày!"]
+];
+
+function line(cls, text){
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = text;
+  $("log").appendChild(d);
+}
+function caret(){
+  $("log").querySelectorAll(".caret").forEach(c=>c.remove());
+  const c=document.createElement("span"); c.className="caret"; $("log").appendChild(c);
+}
+function boot(){
+  $("log").innerHTML="";
+  intro.forEach(([c,t])=>line(c,t)); caret();
+  $("ipwrap").hidden=true; $("prog").hidden=true; $("progb").style.width="0";
+  const b=$("go"); b.hidden=false; b.disabled=false; b.textContent="▶ XÁC ĐỊNH IP"; b.onclick=scan;
+}
+
+async function scan(){
+  const b=$("go"); b.disabled=true; b.hidden=true;
+  $("log").querySelector(".caret")?.remove();
+  line("","> Đang quét..."); $("prog").hidden=false;
+  for(let p=0;p<=100;p+=4){ $("progb").style.width=p+"%"; await wait(55); }
+  $("prog").hidden=true;
+  $("ipwrap").hidden=false;
+  const ip=CONFIG.ip, el=$("ip");
+  for(let i=0;i<14;i++){ el.textContent=ip.replace(/\d/g,()=>Math.floor(Math.random()*10)); await wait(70); }
+  el.textContent=ip;
+  await wait(500);
+  for(const [c,t] of after){ line(c,t); await wait(650); }
+  caret();
+  $("term").querySelector(".crt").classList.add("glitch");
+  await wait(900);
+  b.hidden=false; b.disabled=false; b.textContent="🎁 MỞ FILE BÍ MẬT"; b.onclick=openCard;
+}
+
+function openCard(){
+  $("term").hidden=true; $("card").hidden=false;
+  document.body.style.background="var(--card-bg)";
+  document.documentElement.style.colorScheme="light";
+  goStep(0);
+  confetti();
+}
+
+function goStep(n){
+  document.querySelectorAll(".step").forEach(s=>{
+    const on = +s.dataset.step === n;
+    s.hidden = !on;
+    if(on){ s.classList.remove("pop"); void s.offsetWidth; s.classList.add("pop"); }
+  });
+  document.querySelectorAll("#dots i").forEach((d,i)=>d.classList.toggle("on", i<=n));
+  if(n===3) resetGift();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".next").forEach(b=>b.onclick=()=>goStep(+b.dataset.go));
+
+function resetGift(){
+  $("giftbox").classList.remove("opened"); $("giftbox").hidden=false; $("giftbox").disabled=false;
+  $("gift").hidden=true; $("giftTitle").textContent="Chạm vào hộp quà để mở";
+}
+$("giftbox").onclick=async()=>{
+  const g=$("giftbox"); if(g.classList.contains("opened")) return;
+  g.classList.add("opened"); g.disabled=true;
+  await wait(650);
+  g.hidden=true; $("gift").hidden=false;
+  $("giftTitle").textContent="Quà của "+CONFIG.nickname+" đây!";
+  confetti();
+};
+
+function fillCard(){
+  $("fullName").textContent=CONFIG.fullName;
+  $("nick").textContent=CONFIG.nickname;
+  const days=Math.floor((Date.now()-new Date(CONFIG.birthday+"T00:00:00+07:00"))/864e5);
+  $("days").textContent=days.toLocaleString("vi-VN");
+  const m=$("msg");
+  if(CONFIG.message.trim()){ m.textContent=CONFIG.message; m.classList.remove("empty"); }
+  else { m.textContent="[ Lời chúc sẽ được chèn vào đây ]"; m.classList.add("empty"); }
+  const p=$("photo");
+  if(CONFIG.photo){ p.innerHTML=""; const img=new Image(); img.src=CONFIG.photo; img.alt=CONFIG.nickname; p.appendChild(img); }
+  else p.innerHTML='<div class="ph">[ Ảnh của '+CONFIG.nickname+' ]</div>';
+  $("sig").textContent=CONFIG.from ? "— "+CONFIG.from : "";
+  $("nick2").textContent=CONFIG.nickname;
+  const gp=$("giftPhoto");
+  if(CONFIG.giftPhoto){ gp.innerHTML=""; const img=new Image(); img.src=CONFIG.giftPhoto; img.alt="Quà sinh nhật"; gp.appendChild(img); }
+  else gp.innerHTML='<div class="ph">[ Ảnh món quà ]</div>';
+  $("giftCap").textContent=CONFIG.giftCaption || "Chúc mừng sinh nhật! 🎉";
+}
+
+function confetti(){
+  if(reduce) return;
+  const cv=$("confetti"), ctx=cv.getContext("2d");
+  const W=cv.width=innerWidth*devicePixelRatio, H=cv.height=innerHeight*devicePixelRatio;
+  const cols=["#ff3f78","#ffb23f","#7d5cff","#2ec4a6","#ff8fb1"];
+  const ps=Array.from({length:160},()=>({x:Math.random()*W,y:-Math.random()*H*.6,w:6+Math.random()*8,h:10+Math.random()*10,vx:(Math.random()-.5)*3,vy:2+Math.random()*4,r:Math.random()*6,vr:(Math.random()-.5)*.25,c:cols[Math.random()*cols.length|0]}));
+  let t=0;
+  (function f(){
+    ctx.clearRect(0,0,W,H);
+    ps.forEach(p=>{p.x+=p.vx*devicePixelRatio;p.y+=p.vy*devicePixelRatio;p.r+=p.vr;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();});
+    if(++t<260) requestAnimationFrame(f); else ctx.clearRect(0,0,W,H);
+  })();
+}
+
+$("replay").onclick=()=>{
+  $("card").hidden=true; $("term").hidden=false;
+  document.body.style.background=""; document.documentElement.style.colorScheme="";
+  $("term").querySelector(".crt").classList.remove("glitch");
+  boot();
+};
+
+/* ----- Intro: thư tuyệt mật ----- */
+// ✏️ [TÙY CHỌN] MẬT MÃ để mở thư (nút nhạt). Chỉ nên dùng chữ số.
+//    Nếu đổi số có độ dài khác 8, sửa luôn maxlength="8" ở ô nhập (tìm "maxlength")
+const PASSCODE = "20112004";
+// ✏️ [TÙY CHỌN] Số giây nút nhạt (nút thật) bị ẩn lúc mới mở trang. Đặt 0 để hiện ngay
+const SOFT_DELAY_SECONDS = 10;
+setTimeout(() => $("openBtn").classList.remove("wait"), SOFT_DELAY_SECONDS * 1000);
+// ✏️ [TÙY CHỌN] Các câu trêu hiện ra mỗi lần nút đậm bỏ chạy (lần lượt, lặp lại)
+//    Câu nào cũng đặt trong "..." và cách nhau bằng dấu phẩy. Thêm/bớt thoải mái.
+const taunts = [
+  "Bắt được không? 😜",
+  "Hụt rồi nha~",
+  "Nút này hơi nhát người lạ 🙈",
+  "Chạy nhanh lắm đó nha 🏃‍♀️",
+  "Ơ kìa, tay chậm thế 🐢",
+  "Suýt nữa thôi! Cố lên 💪",
+  "Không bắt được đâu, lêu lêu 😝",
+  "Linh Ozeo mà chỉ có vậy thôi hả?",
+  "Nút này tập gym mỗi ngày đó 🏋️",
+  "Thử nhanh hơn chút nữa xem nào ⚡",
+  "Bấm trúng thì Quang bao trà sữa 🧋",
+  "Mệt chưa? Mình chưa mệt đâu 😌",
+  "Lại hụt! Ahihi đồ ngốc 🤭",
+  "Nút đẹp nhưng nút không dễ dãi 💅",
+  "Kiên trì đấy, cho 10 điểm cố gắng 🏅",
+  "Còn cố nữa à? 😂",
+  "Hay là… không phải nút này? 🤔",
+  "Nhìn kỹ lại màn hình đi nha 👀",
+  "Có một nút khác nhỏ xíu đâu đó… 🔍",
+  "Thử nút kia xem sao 👀"
+];
+let dodges = 0;
+const cancelBtn = $("cancelBtn");
+
+function dodge(e){
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const r = cancelBtn.getBoundingClientRect();
+  if (!cancelBtn.classList.contains("flee")) {
+    cancelBtn.style.left = r.left + "px"; cancelBtn.style.top = r.top + "px";
+    cancelBtn.classList.add("flee"); void cancelBtn.offsetWidth;
+  }
+  const pad = 16, w = r.width, h = r.height;
+  const maxX = innerWidth - w - pad, maxY = innerHeight - h - pad;
+  const cx = r.left + w/2, cy = r.top + h/2;
+  let x, y, tries = 0;
+  do {
+    x = pad + Math.random() * Math.max(0, maxX - pad);
+    y = pad + Math.random() * Math.max(0, maxY - pad);
+    tries++;
+  } while (Math.hypot(x + w/2 - cx, y + h/2 - cy) < Math.min(innerWidth, innerHeight) * 0.35 && tries < 30);
+  cancelBtn.style.left = x + "px"; cancelBtn.style.top = y + "px";
+  $("taunt").textContent = taunts[dodges++ % taunts.length];
+}
+["pointerenter","pointerdown","touchstart","click","focus"].forEach(ev =>
+  cancelBtn.addEventListener(ev, dodge, {passive:false}));
+addEventListener("resize", () => { if (cancelBtn.classList.contains("flee")) dodge(); });
+
+$("openBtn").onclick = () => {
+  $("choices").hidden = true; $("taunt").hidden = true;
+  cancelBtn.classList.remove("flee"); cancelBtn.style.left = cancelBtn.style.top = "";
+  $("passForm").hidden = false; $("err").textContent = ""; $("code").value = "";
+  $("code").focus();
+};
+$("backBtn").onclick = () => {
+  $("passForm").hidden = true; $("choices").hidden = false; $("taunt").hidden = false;
+};
+let wrong = 0;
+$("passForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if ($("code").value.trim() === PASSCODE) {
+    $("intro").hidden = true; $("term").hidden = false; boot();
+  } else {
+    wrong++;
+    $("err").textContent = wrong >= 2
+      ? "Sai rồi! Gợi ý: ngày sinh của bạn (ddmmyyyy) 🎂"   // ✏️ gợi ý từ lần sai thứ 2
+      : "Sai mật mã rồi, thử lại nha!";                     // ✏️ báo lỗi lần sai đầu
+    const f = $("passForm"); f.classList.remove("shake"); void f.offsetWidth; f.classList.add("shake");
+    $("code").select();
+  }
+});
+
+fillCard();
+</script>
