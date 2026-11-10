@@ -630,6 +630,8 @@ function buildGallery(el, list){
     track.scrollTo({left:n*track.clientWidth, behavior:reduce?"auto":"smooth"});
   };
   $("gPrev").onclick=()=>go(-1); $("gNext").onclick=()=>go(1);
+  track.style.cursor="pointer";
+  track.addEventListener("click",()=>go(1));   // chạm vào ảnh → sang ảnh tiếp theo
   track.addEventListener("scroll",()=>requestAnimationFrame(upd),{passive:true});
   upd();
 }
