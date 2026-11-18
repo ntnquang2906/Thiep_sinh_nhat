@@ -54,7 +54,8 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 #card{background:var(--card-bg);color:var(--card-ink);font-family:var(--body)}
 #confetti,#giftFx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
 #photoBg{position:fixed;inset:0;overflow:hidden;z-index:1;pointer-events:none}
-.bgpic{position:absolute;transform:rotate(var(--r));border-radius:8px;overflow:hidden;background:#fff;border:4px solid #fff;box-shadow:0 10px 24px -12px rgba(43,15,46,.35);opacity:.55}
+.bgpic{position:absolute;transform:rotate(var(--r)) scale(.8);border-radius:8px;overflow:hidden;background:#fff;border:4px solid #fff;box-shadow:0 10px 24px -12px rgba(43,15,46,.35);opacity:0;transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+.bgpic.in{opacity:.55;transform:rotate(var(--r)) scale(1)}
 .bgpic img{width:100%;height:100%;object-fit:cover;display:block}
 .card{width:100%;max-width:520px;display:flex;flex-direction:column;gap:22px;text-align:left;position:relative;z-index:6}
 .eyebrow{font:600 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--card-accent)}
@@ -646,7 +647,7 @@ function scatterPhotos(){
   if(!host || host.childElementCount) return;
   const list = [].concat(CONFIG.photo||[]).slice(0,10);
   const W = innerWidth, H = innerHeight, placed = [];
-  list.forEach(src => {
+  list.forEach((src,i) => {
     const w = 90 + Math.random()*70, h = w * (1.15 + Math.random()*.2);
     let x=0,y=0,tries=0,best=null,bestOv=Infinity;
     do{
@@ -660,6 +661,7 @@ function scatterPhotos(){
     fig.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;--r:${(Math.random()*50-25).toFixed(1)}deg`;
     const img = new Image(); img.src = src; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
     fig.appendChild(img); host.appendChild(fig);
+    setTimeout(() => fig.classList.add("in"), reduce ? 0 : i * 260);
   });
 }
 
@@ -714,7 +716,6 @@ function openCard(){
     document.body.style.background="var(--card-bg)";
     document.documentElement.style.colorScheme="light";
     goStep(0,true);
-    scatterPhotos();
     setTimeout(confetti,250);
   });
 }
@@ -734,7 +735,7 @@ async function goStep(n,instant){
     if(on){ s.classList.remove("pop"); void s.offsetWidth; s.classList.add("pop"); }
   });
   document.querySelectorAll("#dots i").forEach((d,i)=>d.classList.toggle("on", i<=n));
-  if(n===2) typeMessage();
+  if(n===2){ typeMessage(); scatterPhotos(); }
   if(n===3) resetGift();
   window.scrollTo(0,0);
 }
