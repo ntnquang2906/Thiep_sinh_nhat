@@ -52,7 +52,10 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 
 /* ---------- Card ---------- */
 #card{background:var(--card-bg);color:var(--card-ink);font-family:var(--body)}
-#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+#confetti,#giftFx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+#photoBg{position:fixed;inset:0;overflow:hidden;z-index:1;pointer-events:none}
+.bgpic{position:absolute;transform:rotate(var(--r));border-radius:8px;overflow:hidden;background:#fff;border:4px solid #fff;box-shadow:0 10px 24px -12px rgba(43,15,46,.35);opacity:.55}
+.bgpic img{width:100%;height:100%;object-fit:cover;display:block}
 .card{width:100%;max-width:520px;display:flex;flex-direction:column;gap:22px;text-align:left;position:relative;z-index:6}
 .eyebrow{font:600 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--card-accent)}
 .hbd{font-family:var(--display);font-weight:800;font-size:clamp(44px,13vw,84px);line-height:.92;letter-spacing:-.02em;margin:0;text-wrap:balance}
@@ -249,7 +252,9 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 </section>
 
 <section id="card" class="screen" hidden>
+  <div id="photoBg" aria-hidden="true"></div>
   <canvas id="confetti"></canvas>
+  <canvas id="giftFx"></canvas>
   <!-- ✏️ [TÙY CHỌN] 4 màn của thiệp: các tiêu đề (eyebrow, h1, h2) và chữ trên nút "Xem tiếp →",
        "Đọc lời chúc →", "Nhận quà 🎁" đều sửa trực tiếp được ngay bên dưới.
        Ảnh, lời chúc, chữ ký, ảnh quà thì KHÔNG điền ở đây — điền trong khối CONFIG ở cuối file. -->
@@ -629,12 +634,87 @@ async function swap(fromId,toId,beforeShow){
   busy=false;
 }
 
+/* Rải 10 ảnh lộn xộn (vị trí, xoay ngẫu nhiên) lên nền thiệp, tránh chồng nhau quá 10% diện tích */
+function overlapPct(x,y,w,h,p){
+  const ix = Math.max(0, Math.min(x+w,p.x+p.w) - Math.max(x,p.x));
+  const iy = Math.max(0, Math.min(y+h,p.y+p.h) - Math.max(y,p.y));
+  const inter = ix*iy;
+  return inter ? inter / Math.min(w*h, p.w*p.h) : 0;
+}
+function scatterPhotos(){
+  const host = $("photoBg");
+  if(!host || host.childElementCount) return;
+  const list = [].concat(CONFIG.photo||[]).slice(0,10);
+  const W = innerWidth, H = innerHeight, placed = [];
+  list.forEach(src => {
+    const w = 90 + Math.random()*70, h = w * (1.15 + Math.random()*.2);
+    let x=0,y=0,tries=0,best=null,bestOv=Infinity;
+    do{
+      const cx = Math.random()*Math.max(1,W-w), cy = Math.random()*Math.max(1,H-h);
+      const ov = placed.reduce((m,p)=>Math.max(m, overlapPct(cx,cy,w,h,p)), 0);
+      if(ov < bestOv){ bestOv = ov; best = {x:cx,y:cy}; }
+      tries++;
+    } while(bestOv > .1 && tries < 60);
+    x = best.x; y = best.y; placed.push({x,y,w,h});
+    const fig = document.createElement("div"); fig.className = "bgpic";
+    fig.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;--r:${(Math.random()*50-25).toFixed(1)}deg`;
+    const img = new Image(); img.src = src; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
+    fig.appendChild(img); host.appendChild(fig);
+  });
+}
+
+/* Pháo hoa bắn lên (dùng canvas riêng #giftFx để hiện được cả khi đang ở màn thiệp, không chỉ màn outro) */
+function giftFireworks(){
+  if(reduce) return;
+  const cv=$("giftFx"), ctx=cv.getContext("2d"), dpr=Math.min(devicePixelRatio||1,2);
+  cv.width=innerWidth*dpr; cv.height=innerHeight*dpr;
+  const COLS=["#ff3f78","#ff8fb1","#ffd6e2","#c2a1ec","#a77bff","#ffffff","#ffcf4a","#7de3ff","#ff6fd8"];
+  const pick=()=>COLS[Math.random()*COLS.length|0];
+  const rockets=[], parts=[];
+  function boom(){ noiseBurst(0,.8,1.2,160+Math.random()*140,.6); tone(80,.6,{type:"sine",vol:.28,slide:32}); }
+  function launch(){
+    const h=cv.height;
+    rockets.push({x:cv.width*(.15+Math.random()*.7), y:h, ty:h*(.15+Math.random()*.35),
+      vy:-h*(.02+Math.random()*.006), c:pick(), c2:pick()});
+  }
+  function explode(r){
+    const m=Math.min(cv.width,cv.height), n=160+(Math.random()*60|0), sp=m*.0048*(.85+Math.random()*.3);
+    for(let i=0;i<n;i++){
+      const a=Math.random()*Math.PI*2, s=sp*Math.cbrt(Math.random());
+      parts.push({x:r.x,y:r.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,decay:.009+Math.random()*.01,
+        c:(i%3?r.c:r.c2), s:2.4*dpr});
+    }
+    boom();
+  }
+  let n=0; const burstTimer=setInterval(()=>{ launch(); if(++n>=6) clearInterval(burstTimer); }, 180);
+  const start=performance.now(), DUR=2600;
+  (function frame(now){
+    ctx.globalCompositeOperation="destination-out"; ctx.fillStyle="rgba(0,0,0,.2)"; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.globalCompositeOperation="lighter";
+    for(let i=rockets.length-1;i>=0;i--){
+      const r=rockets[i]; r.y+=r.vy; r.vy*=.985;
+      ctx.globalAlpha=1; ctx.fillStyle=r.c; ctx.fillRect(r.x-1.5*dpr,r.y,3*dpr,10*dpr);
+      if(r.y<=r.ty || r.vy>-2){ explode(r); rockets.splice(i,1); }
+    }
+    const g=.035*dpr;
+    for(let i=parts.length-1;i>=0;i--){
+      const p=parts[i]; p.vx*=.985; p.vy=p.vy*.985+g; p.x+=p.vx; p.y+=p.vy; p.life-=p.decay;
+      if(p.life<=0){ parts[i]=parts[parts.length-1]; parts.pop(); continue; }
+      ctx.globalAlpha=Math.min(1,p.life*1.5); ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,p.s,p.s);
+    }
+    ctx.globalAlpha=1;
+    if(now-start<DUR || rockets.length || parts.length) requestAnimationFrame(frame);
+    else ctx.clearRect(0,0,cv.width,cv.height);
+  })(start);
+}
+
 function openCard(){
   startBg();
   swap("term","card",()=>{
     document.body.style.background="var(--card-bg)";
     document.documentElement.style.colorScheme="light";
     goStep(0,true);
+    scatterPhotos();
     setTimeout(confetti,250);
   });
 }
@@ -670,7 +750,7 @@ function typeMessage(){
   if(reduce){ m.textContent = full; return; }
   m.textContent = "";
   let i = 0;
-  const perChar = Math.max(8, Math.min(60, 9000 / full.length));
+  const perChar = Math.max(13, Math.min(70, 14000 / full.length));
   msgTimer = setInterval(() => {
     i++;
     m.textContent = full.slice(0, i);
@@ -829,14 +909,17 @@ function buildSecrets(){
       btn.classList.add("open"); btn.setAttribute("aria-label", "Quà " + (i + 1) + " — chạm để xem ảnh lớn");
       cap.textContent = g.caption || ("Quà bí mật #" + (i + 1));
       [0, .09, .18, .27].forEach((at, k) => tone(mtof([84, 88, 91, 96][k]), .5, {type:"sine", vol:.1, at}));   // tiếng lấp lánh
+      confetti(); giftFireworks();
     };
     box.append(btn, cap); wrap.appendChild(box);
   });
 }
 $("giftStage").onclick = () => {
   const s = $("giftStage"); if(!s.classList.contains("tap")) return;
+  const turningOn = !s.classList.contains("show-real");
   s.classList.toggle("show-real");
   $("giftHint").textContent = s.classList.contains("show-real") ? "Chạm để xem lại tranh 🎨" : "Chạm vào tranh để xem bó hoa thật 💐";
+  if(turningOn){ confetti(); giftFireworks(); }
 };
 
 function resetGift(){
