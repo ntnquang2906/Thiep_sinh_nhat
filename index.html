@@ -54,7 +54,7 @@ body{background:var(--term-bg);color:var(--term-fg);font-family:var(--mono);over
 #card{background:var(--card-bg);color:var(--card-ink);font-family:var(--body)}
 #confetti,#giftFx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
 #photoBg{position:fixed;inset:0;overflow:hidden;z-index:1;pointer-events:none}
-.bgpic{position:absolute;transform:rotate(var(--r)) scale(.8);border-radius:8px;overflow:hidden;background:#fff;border:4px solid #fff;box-shadow:0 10px 24px -12px rgba(43,15,46,.35);opacity:0;transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+.bgpic{position:absolute;transform:rotate(var(--r)) scale(.8);border-radius:8px;overflow:hidden;background:#fff;border:4px solid #fff;box-shadow:0 10px 24px -12px rgba(43,15,46,.35);opacity:0;transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1),left .6s ease,top .6s ease}
 .bgpic.in{opacity:.55;transform:rotate(var(--r)) scale(1)}
 .bgpic img{width:100%;height:100%;object-fit:cover;display:block}
 .card{width:100%;max-width:520px;display:flex;flex-direction:column;gap:22px;text-align:left;position:relative;z-index:6}
@@ -635,34 +635,52 @@ async function swap(fromId,toId,beforeShow){
   busy=false;
 }
 
-/* Rải 10 ảnh lộn xộn (vị trí, xoay ngẫu nhiên) lên nền thiệp, tránh chồng nhau quá 10% diện tích */
+/* Rải 10 ảnh lộn xộn lên nền thiệp: né hẳn vùng khối nội dung đang hiện (lời chúc / hộp quà),
+   và giữa các ảnh với nhau không chồng quá 10% diện tích */
 function overlapPct(x,y,w,h,p){
   const ix = Math.max(0, Math.min(x+w,p.x+p.w) - Math.max(x,p.x));
   const iy = Math.max(0, Math.min(y+h,p.y+p.h) - Math.max(y,p.y));
   const inter = ix*iy;
   return inter ? inter / Math.min(w*h, p.w*p.h) : 0;
 }
-function scatterPhotos(){
-  const host = $("photoBg");
-  if(!host || host.childElementCount) return;
-  const list = [].concat(CONFIG.photo||[]).slice(0,10);
-  const W = innerWidth, H = innerHeight, placed = [];
-  list.forEach((src,i) => {
-    const w = 90 + Math.random()*70, h = w * (1.15 + Math.random()*.2);
-    let x=0,y=0,tries=0,best=null,bestOv=Infinity;
+function photoAvoidRect(){
+  const step = document.querySelector(".step:not([hidden])");
+  if(!step) return null;
+  const r = step.getBoundingClientRect();
+  return {x:r.left, y:r.top, w:r.width, h:r.height};
+}
+function layoutPhotos(figs){
+  const W = innerWidth, H = innerHeight, avoid = photoAvoidRect(), placed = [];
+  figs.forEach(fig => {
+    const w = parseFloat(fig.style.width), h = parseFloat(fig.style.height);
+    let best = null, bestScore = Infinity, tries = 0;
     do{
       const cx = Math.random()*Math.max(1,W-w), cy = Math.random()*Math.max(1,H-h);
-      const ov = placed.reduce((m,p)=>Math.max(m, overlapPct(cx,cy,w,h,p)), 0);
-      if(ov < bestOv){ bestOv = ov; best = {x:cx,y:cy}; }
+      const ovA = avoid ? overlapPct(cx,cy,w,h,avoid) : 0;
+      const ovP = placed.reduce((m,p)=>Math.max(m, overlapPct(cx,cy,w,h,p)), 0);
+      const score = ovA*1000 + ovP;   // ưu tiên tuyệt đối né vùng nội dung, rồi mới tới né ảnh khác
+      if(score < bestScore){ bestScore = score; best = {x:cx,y:cy,ovA,ovP}; }
       tries++;
-    } while(bestOv > .1 && tries < 60);
-    x = best.x; y = best.y; placed.push({x,y,w,h});
+    } while((best.ovA > 0 || best.ovP > .1) && tries < 150);
+    fig.style.left = best.x+"px"; fig.style.top = best.y+"px";
+    placed.push({x:best.x,y:best.y,w,h});
+  });
+}
+function scatterPhotos(){
+  const host = $("photoBg");
+  if(!host) return;
+  if(host.childElementCount){ layoutPhotos([...host.children]); return; }
+  const list = [].concat(CONFIG.photo||[]).slice(0,10);
+  const figs = list.map(src => {
+    const w = 170 + Math.random()*110, h = w * (1.15 + Math.random()*.2);
     const fig = document.createElement("div"); fig.className = "bgpic";
-    fig.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;--r:${(Math.random()*50-25).toFixed(1)}deg`;
+    fig.style.cssText = `width:${w}px;height:${h}px;left:0px;top:0px;--r:${(Math.random()*50-25).toFixed(1)}deg`;
     const img = new Image(); img.src = src; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
     fig.appendChild(img); host.appendChild(fig);
-    setTimeout(() => fig.classList.add("in"), reduce ? 0 : i * 260);
+    return fig;
   });
+  layoutPhotos(figs);
+  figs.forEach((fig,i) => setTimeout(() => fig.classList.add("in"), reduce ? 0 : i * 260));
 }
 
 /* Pháo hoa bắn lên (dùng canvas riêng #giftFx để hiện được cả khi đang ở màn thiệp, không chỉ màn outro) */
@@ -736,7 +754,7 @@ async function goStep(n,instant){
   });
   document.querySelectorAll("#dots i").forEach((d,i)=>d.classList.toggle("on", i<=n));
   if(n===2){ typeMessage(); scatterPhotos(); }
-  if(n===3) resetGift();
+  if(n===3){ resetGift(); scatterPhotos(); }
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".next").forEach(b=>b.onclick=()=>goStep(+b.dataset.go));
@@ -797,11 +815,12 @@ function colorBouquet(){
   const total = reduce ? 100 : (PAINT[PAINT.length-1][4] + 1.3) * 1000;
   paintTimers.push(setTimeout(() => {
     if(CONFIG.giftPhoto){ $("giftStage").classList.add("tap"); $("giftHint").textContent = "Chạm vào tranh để xem bó hoa thật 💐"; }
-    confetti();
+    confetti(); scatterPhotos();
   }, total));
   paintTimers.push(setTimeout(() => {
     if(CONFIG.secretGifts.length){ const m = $("more"); m.hidden = false; m.classList.remove("enter"); void m.offsetWidth; m.classList.add("enter"); }
     $("toOutro").hidden = false;
+    scatterPhotos();
   }, total + 1500));
 }
 
@@ -937,6 +956,7 @@ $("giftbox").onclick=async()=>{
   await wait(650);
   g.hidden=true; $("gift").hidden=false;
   $("giftTitle").textContent="Quà của "+CONFIG.nickname+" đây!";
+  scatterPhotos();
   colorBouquet();
 };
 
